@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>財務趨勢預測分析師</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      /* ── LIGHT THEME (default) ── */
+      --bg: #f4f6fa; --surface: #ffffff; --surface2: #f0f2f7; --surface3: #e8ecf4;
+      --border: #d0d7e8; --border-light: #b8c2d8;
+      --accent: #c8900a; --accent2: #1a6fd4; --accent3: #1e8f3a; --danger: #d63b34;
+      --text-primary: #1a2236; --text-secondary: #4a5675; --text-muted: #7a86a0;
+      --font-sans: 'Noto Sans TC', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-display: 'Playfair Display', serif;
+      --radius: 8px; --radius-lg: 12px; --transition: 0.2s ease;
+    }
+    /* ── DARK THEME ── */
+    body.dark {
+      --bg: #1a1f2e; --surface: #242938; --surface2: #2d3348; --surface3: #353c52;
+      --border: #424b66; --border-light: #525d7a;
+      --accent: #f0c040; --accent2: #7ab8ff; --accent3: #4fd86a; --danger: #ff6b63;
+      --text-primary: #f0f4ff; --text-secondary: #b0bcd4; --text-muted: #8090b0;
+    }
+    body { font-family: var(--font-sans); background: var(--bg); color: var(--text-primary); line-height: 1.6; min-height: 100vh; }
+
+    /* HEADER */
+    .app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; height: 58px; gap: 14px; }
+    .header-badge { background: linear-gradient(135deg,var(--accent),#c99a3a); color: #0d1117; font-size: 0.62rem; font-weight: 700; letter-spacing: .08em; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+    .header-title { font-family: var(--font-display); font-size: 1.1rem; flex: 1; }
+    .header-sub { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+    /* LAYOUT */
+    .app-layout { display: flex; min-height: calc(100vh - 58px); }
+
+    /* SIDEBAR */
+    .step-sidebar { width: 210px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); padding: 22px 0; position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto; }
+    .sidebar-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); padding: 0 18px 10px; }
+    .step-item { display: flex; align-items: center; gap: 10px; padding: 9px 18px; cursor: pointer; transition: background var(--transition); border-left: 3px solid transparent; color: var(--text-secondary); font-size: 0.83rem; }
+    .step-item:hover { background: var(--surface2); }
+    .step-item.active { border-left-color: var(--accent); background: var(--surface2); color: var(--text-primary); }
+    .step-item.done { color: var(--accent3); }
+    .step-num { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-family: var(--font-mono); flex-shrink: 0; transition: all var(--transition); }
+    .step-item.active .step-num { border-color: var(--accent); background: var(--accent); color: #0d1117; font-weight: 700; }
+    .step-item.done .step-num { border-color: var(--accent3); background: var(--accent3); color: #0d1117; }
+
+    /* MAIN */
+    .main-content { flex: 1; padding: 28px 32px; overflow-x: hidden; max-width: calc(100vw - 210px); }
+
+    /* PANEL */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 22px; overflow: hidden; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .panel-header { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface2); flex-wrap: wrap; }
+    .panel-title { font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .panel-body { padding: 22px; }
+
+    /* ALERT */
+    .alert { border-radius: var(--radius); padding: 11px 15px; font-size: 0.83rem; display: flex; align-items: flex-start; gap: 9px; margin-bottom: 14px; animation: fadeIn .2s ease; }
+    .alert-error { background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.3); color: #ff7b72; }
+    .alert-success { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3); color: var(--accent3); }
+    .alert-info { background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.3); color: var(--accent2); }
+    .alert-warning { background: rgba(230,180,80,.1); border: 1px solid rgba(230,180,80,.3); color: var(--accent); }
+    .alert-close { margin-left: auto; cursor: pointer; opacity: .6; flex-shrink: 0; }
+    .alert-close:hover { opacity: 1; }
+
+    /* FORM */
+    label.field-label { display: block; font-size: 0.77rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 7px; text-transform: uppercase; letter-spacing: .06em; }
+    textarea { width: 100%; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.83rem; padding: 11px 14px; resize: vertical; min-height: 110px; transition: border-color var(--transition); line-height: 1.7; }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    textarea::placeholder { color: var(--text-muted); }
+    select { background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-sans); font-size: 0.83rem; padding: 7px 30px 7px 11px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 9px center; transition: border-color var(--transition); }
+    select:focus { outline: none; border-color: var(--accent); }
+    input[type=text] { background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.88rem; padding: 7px 11px; width: 110px; transition: border-color var(--transition); }
+    input:focus { outline: none; border-color: var(--accent); }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: none; cursor: pointer; font-family: var(--font-sans); font-size: 0.83rem; font-weight: 600; transition: all var(--transition); white-space: nowrap; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-primary:hover:not(:disabled) { background: #f0c060; transform: translateY(-1px); }
+    .btn-secondary { background: var(--surface3); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--border); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-light); }
+    .btn-sm { padding: 5px 11px; font-size: 0.76rem; }
+    .spinner { width: 13px; height: 13px; border: 2px solid rgba(0,0,0,.3); border-top-color: #0d1117; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* PROGRESS */
+    .progress-strip { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 22px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg,var(--accent),#f0c060); border-radius: 2px; transition: width .5s ease; }
+
+    /* PARSE PREVIEW */
+    .parse-preview { margin-top: 14px; padding: 14px 16px; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); }
+    .parse-preview-title { font-size: 0.76rem; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 10px; }
+    .series-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .series-chip { display: flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 20px; border: 2px solid; font-size: 0.8rem; font-weight: 500; }
+    .series-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* SERIES TABS */
+    .series-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+    .series-tab { padding: 6px 15px; border-radius: 20px; border: 2px solid var(--border); background: transparent; color: var(--text-secondary); font-family: var(--font-sans); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+    .series-tab:hover { border-color: var(--border-light); color: var(--text-primary); }
+    .series-tab.active { color: #0d1117 !important; }
+
+    /* TABLES */
+    .table-wrapper { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th { background: var(--surface3); color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; padding: 10px 13px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--text-primary); }
+    td { padding: 9px 13px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); color: var(--text-primary); white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--surface2); }
+    .rotated-table th:first-child { position: sticky; left: 0; background: var(--surface3); z-index: 1; min-width: 120px; font-size: 0.7rem; }
+    .rotated-table td:first-child { position: sticky; left: 0; background: var(--surface2); z-index: 1; color: var(--text-secondary); font-size: 0.78rem; font-family: var(--font-sans); }
+    .rotated-table tbody tr:hover td { background: var(--surface3); }
+    .rotated-table tbody tr:hover td:first-child { background: var(--surface3); }
+
+    /* STATS GRID */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px,1fr)); gap: 10px; }
+    .stat-card { background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+    .stat-card .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+    .stat-card .stat-value { font-family: var(--font-mono); font-size: 1.22rem; font-weight: 500; }
+
+    /* PREDICTION TABLE */
+    .pred-value { font-weight: 600; font-family: var(--font-mono); }
+    .pred-max { color: var(--accent); }
+    .pred-min { color: var(--accent2); }
+    .pred-badge { display: inline-block; font-size: 0.62rem; padding: 2px 6px; border-radius: 3px; font-weight: 700; margin-left: 5px; vertical-align: middle; text-transform: uppercase; letter-spacing: .06em; }
+    .badge-max { background: rgba(230,180,80,.15); color: var(--accent); }
+    .badge-min { background: rgba(88,166,255,.15); color: var(--accent2); }
+    .formula-cell { font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted); max-width: 220px; white-space: normal; word-break: break-all; }
+
+    /* TOOLTIP */
+    .tooltip-wrap { position: relative; display: inline-flex; align-items: center; cursor: help; }
+    .tooltip-wrap .tt-icon { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.68rem; display: inline-flex; align-items: center; justify-content: center; margin-left: 4px; }
+    .tooltip-wrap .tt-content { visibility: hidden; opacity: 0; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: #1e2530; border: 1px solid var(--border-light); color: var(--text-secondary); font-size: 0.76rem; padding: 9px 13px; border-radius: 6px; width: 250px; z-index: 50; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,.4); transition: opacity .2s; font-family: var(--font-sans); white-space: normal; }
+    .tooltip-wrap:hover .tt-content { visibility: visible; opacity: 1; }
+
+    /* CHARTS */
+    .chart-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chart-accordion { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; }
+    .chart-accordion-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; background: var(--surface2); transition: background var(--transition); user-select: none; }
+    .chart-accordion-header:hover { background: var(--surface3); }
+    .chart-accordion-title { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chart-pred-value { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); }
+    .chart-toggle-icon { color: var(--text-muted); transition: transform .25s; font-size: 0.82rem; flex-shrink: 0; }
+    .chart-accordion.open .chart-toggle-icon { transform: rotate(180deg); }
+    .chart-accordion-body { display: none; padding: 18px; background: var(--surface); }
+    .chart-accordion.open .chart-accordion-body { display: block; }
+    .chart-canvas-wrap { position: relative; height: 320px; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+    .comparison-wrap { position: relative; height: 380px; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+
+    /* PAGINATION */
+    .chart-pagination { display: flex; align-items: center; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+    .page-btn { padding: 4px 11px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface3); color: var(--text-secondary); font-size: 0.76rem; cursor: pointer; font-family: var(--font-mono); transition: all var(--transition); }
+    .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .page-btn.active { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 700; }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .page-info { font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+    /* EXPORT */
+    .export-bar { display: flex; gap: 8px; align-items: center; padding: 10px 14px; background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; flex-wrap: wrap; }
+    .export-label { font-size: 0.76rem; color: var(--text-muted); flex: 1; }
+
+    /* EMPTY */
+    .empty-state { text-align: center; padding: 44px 20px; color: var(--text-muted); }
+    .empty-state .ei { font-size: 2.2rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.83rem; line-height: 1.7; }
+
+    /* HIDDEN */
+    .hidden { display: none !important; }
+
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    /* YEAR INPUT */
+    .year-input-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: rgba(230,180,80,.06); border: 1px solid rgba(230,180,80,.25); border-radius: var(--radius); margin-top: 10px; animation: fadeIn .3s ease; }
+    .year-input-row label { margin: 0; font-size: 0.83rem; color: var(--accent); white-space: nowrap; }
+
+    .format-hint { margin-top: 7px; font-size: 0.76rem; color: var(--text-muted); line-height: 1.6; }
+    .format-hint code { background: var(--surface3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-family: var(--font-mono); color: var(--accent2); font-size: 0.76rem; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    @media (max-width: 860px) { .step-sidebar { display: none; } .main-content { max-width: 100vw; padding: 14px; } }
+
+    /* ── LIGHT THEME OVERRIDES ── */
+    body:not(.dark) textarea,
+    body:not(.dark) input[type=text],
+    body:not(.dark) select {
+      background: #ffffff;
+      border-color: #d0d7e8;
+      color: #1a2236;
+    }
+    body:not(.dark) textarea::placeholder { color: #a0aec0; }
+    body:not(.dark) .panel { box-shadow: 0 2px 12px rgba(26,34,54,0.08); }
+    body:not(.dark) .stat-card { background: #f8faff; }
+    body:not(.dark) th { background: #eef1f8; color: #4a5675; }
+    body:not(.dark) td { color: #1a2236; }
+    body:not(.dark) tbody tr:hover td { background: #f0f3fb; }
+    body:not(.dark) .rotated-table td:first-child { background: #f0f3fb; color: #4a5675; }
+    body:not(.dark) .rotated-table tbody tr:hover td { background: #e8ecf8; }
+    body:not(.dark) .rotated-table tbody tr:hover td:first-child { background: #e8ecf8; }
+    body:not(.dark) .chart-accordion-header { background: #f0f3fb; }
+    body:not(.dark) .chart-accordion-header:hover { background: #e8ecf8; }
+    body:not(.dark) .chart-accordion-body { background: #f8faff; }
+    body:not(.dark) .chart-canvas-wrap,
+    body:not(.dark) .comparison-wrap { background: #f8faff; border-color: #d0d7e8; }
+    body:not(.dark) .parse-preview { background: #f0f3fb; border-color: #d0d7e8; }
+    body:not(.dark) .export-bar { background: #f0f3fb; border-color: #d0d7e8; }
+    body:not(.dark) .empty-state { color: #7a86a0; }
+    body:not(.dark) .page-btn { background: #f0f3fb; color: #4a5675; border-color: #d0d7e8; }
+    body:not(.dark) .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    body:not(.dark) .tooltip-wrap .tt-content { background: #ffffff; border-color: #d0d7e8; color: #4a5675; box-shadow: 0 4px 20px rgba(26,34,54,0.15); }
+    body:not(.dark) .header-badge { background: linear-gradient(135deg,#c8900a,#a57000); }
+    body:not(.dark) .series-tab { border-color: #d0d7e8; color: #4a5675; }
+    body:not(.dark) .series-tab:hover { border-color: #b8c2d8; color: #1a2236; }
+    body:not(.dark) .alert-error { background: rgba(214,59,52,0.08); border-color: rgba(214,59,52,0.3); }
+    body:not(.dark) .alert-success { background: rgba(30,143,58,0.08); border-color: rgba(30,143,58,0.3); }
+    body:not(.dark) .alert-info { background: rgba(26,111,212,0.08); border-color: rgba(26,111,212,0.3); }
+    body:not(.dark) .alert-warning { background: rgba(200,144,10,0.08); border-color: rgba(200,144,10,0.3); }
+    body:not(.dark) .year-input-row { background: rgba(200,144,10,0.05); border-color: rgba(200,144,10,0.3); }
+    body:not(.dark) .format-hint code { background: #eef1f8; border-color: #d0d7e8; color: #1a6fd4; }
+    body:not(.dark) ::-webkit-scrollbar-track { background: #f0f3fb; }
+    body:not(.dark) ::-webkit-scrollbar-thumb { background: #c0cce0; }
+
+    /* ── SERIES TAB NATIVE TOOLTIP ENHANCEMENT ── */
+    .series-tab[title] { position: relative; }
+
+    /* ── CHART HEADER TOOLTIP (method description) ── */
+    .chart-method-tip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.76rem; color: var(--text-muted);
+      font-weight: 400; font-family: var(--font-sans);
+    }
+    .chart-method-tip .tip-icon {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1px solid var(--border-light);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; cursor: help; flex-shrink: 0;
+      color: var(--text-muted);
+    }
+    .chart-method-tip .tip-box {
+      visibility: hidden; opacity: 0;
+      position: absolute; bottom: 130%; left: 0;
+      background: var(--surface); border: 1px solid var(--border-light);
+      color: var(--text-secondary); font-size: 0.78rem;
+      padding: 10px 14px; border-radius: 8px;
+      width: 280px; z-index: 60; line-height: 1.6;
+      box-shadow: 0 6px 24px rgba(0,0,0,.15);
+      transition: opacity .2s; white-space: normal;
+      pointer-events: none;
+    }
+    .chart-method-tip:hover .tip-box { visibility: visible; opacity: 1; }
+    .chart-accordion-title { position: relative; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-title">財務趨勢預測分析師</div>
+  <div class="header-sub">中央政府特種基金智能分析平台</div>
+  <button id="themeToggle" onclick="toggleTheme()" style="margin-left:auto;background:var(--surface3);border:1px solid var(--border);color:var(--text-secondary);border-radius:20px;padding:5px 14px;font-size:0.78rem;font-family:var(--font-sans);cursor:pointer;transition:all 0.2s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-secondary)'">🌙 深色模式</button>
+</header>
+
+<div class="app-layout">
+  <nav class="step-sidebar">
+    <div class="sidebar-label">操作流程</div>
+    <div class="step-item active" id="nav-step1" onclick="scrollToPanel('panel-input')"><div class="step-num">1</div><span>輸入數據</span></div>
+    <div class="step-item" id="nav-step2" onclick="scrollToPanel('panel-analysis')"><div class="step-num">2</div><span>數據分析</span></div>
+    <div class="step-item" id="nav-step3" onclick="scrollToPanel('panel-stats')"><div class="step-num">3</div><span>敘述性統計</span></div>
+    <div class="step-item" id="nav-step4" onclick="scrollToPanel('panel-prediction')"><div class="step-num">4</div><span>預測結果</span></div>
+    <div class="step-item" id="nav-step5" onclick="scrollToPanel('panel-charts')"><div class="step-num">5</div><span>圖表展示</span></div>
+  </nav>
+
+  <main class="main-content">
+    <div class="progress-strip"><div class="progress-fill" id="progressFill" style="width:8%"></div></div>
+    <div id="alertContainer"></div>
+
+    <!-- STEP 1 -->
+    <div class="panel" id="panel-input">
+      <div class="panel-header">
+        <div class="panel-title">📥 步驟 1：貼上 Excel 數據</div>
+        <button class="btn btn-ghost btn-sm" onclick="pasteExample()">載入範例</button>
+      </div>
+      <div class="panel-body">
+        <label class="field-label" for="dataInput">直接從 Excel 複製貼上（支援多欄數列）</label>
+        <textarea id="dataInput" rows="6" placeholder="直接從 Excel Ctrl+C，在此 Ctrl+V&#10;&#10;【垂直格式】年度為列：&#10;年度	收入	支出&#10;112	1580	1200&#10;113	1640	1250&#10;&#10;【水平格式】年度為欄：&#10;	112	113	114&#10;收入	1580	1640	1720&#10;支出	1200	1250	1310&#10;&#10;也支援純數值序列"></textarea>
+        <div class="format-hint">✅ 自動辨識：<code>垂直格式</code>（年度為列）· <code>水平格式</code>（年度為欄）· <code>民國 / 西元年</code> · <code>多組數列</code> · <code>Tab / 逗號</code></div>
+
+        <div class="year-input-row hidden" id="yearInputRow">
+          <label>⚠️ 偵測到純數值，請指定起始年份：</label>
+          <input type="text" id="startYearInput" placeholder="如 112 或 2023" maxlength="4">
+          <span style="font-size:.76rem;color:var(--text-muted)">民國1-3碼 / 西元4碼</span>
+        </div>
+
+        <div class="parse-preview hidden" id="parsePreview">
+          <div class="parse-preview-title">偵測到以下數列：</div>
+          <div class="series-chips" id="seriesChips"></div>
+        </div>
+
+        <hr class="divider">
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="loadBtn" onclick="loadData()">讀取資料</button>
+          <button class="btn btn-secondary" onclick="clearAll()">清除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="panel hidden" id="panel-analysis">
+      <div class="panel-header">
+        <div class="panel-title">📊 步驟 2：數據分析</div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <label class="field-label" style="margin:0;font-size:.76rem">基準年</label>
+          <select id="baseYearSelect" onchange="updateAnalysisTable()"></select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="series-tabs" id="analysisTabs"></div>
+        <div class="table-wrapper"><table class="rotated-table"><tbody id="integratedTableBody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="panel hidden" id="panel-stats">
+      <div class="panel-header"><div class="panel-title">📐 步驟 3：敘述性統計</div></div>
+      <div class="panel-body">
+        <div class="series-tabs" id="statsTabs"></div>
+        <div class="stats-grid" id="statsGrid"></div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="panel hidden" id="panel-prediction">
+      <div class="panel-header">
+        <div class="panel-title">🔮 步驟 4：預測結果</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="generateBtn" onclick="generatePredictions()">產生預測及圖表</button>
+          <button class="btn btn-ghost btn-sm" id="togglePredBtn" onclick="togglePredTable()">收合表格</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="series-tabs" id="predTabs"></div>
+        <div id="predTableWrap"><div class="empty-state"><div class="ei">🔮</div><p>點擊「產生預測及圖表」以計算所有方法結果</p></div></div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="panel hidden" id="panel-charts">
+      <div class="panel-header">
+        <div class="panel-title">📈 步驟 5：圖表展示</div>
+        <div class="chart-controls">
+          <label class="field-label" style="margin:0;font-size:.76rem">顯示方法</label>
+          <select id="chartMethodSelect" onchange="displayCharts()">
+            <option value="none">請選擇方法</option>
+            <option value="all">全部方法（分頁）</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="export-bar hidden" id="exportBar">
+          <span class="export-label" id="chartDisplayTitle"></span>
+          <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ 匯出 CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportPNG()">🖼 PNG</button>
+        </div>
+        <!-- Multi-series comparison -->
+        <div id="comparisonSection" class="hidden">
+          <div style="font-size:.8rem;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">📊 多數列歷史比較</div>
+          <div class="comparison-wrap"><canvas id="comparisonChart"></canvas></div>
+        </div>
+        <div class="series-tabs" id="chartTabs"></div>
+        <div id="chartsWrapper"><div class="empty-state"><div class="ei">📈</div><p>請先產生預測，再選擇顯示方法</p></div></div>
+        <div class="chart-pagination" id="chartPagination"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ── SERIES COLORS ── */
+const SC=[
+  {line:'rgba(88,166,255,1)',  bar:'rgba(88,166,255,0.4)',  hex:'#58a6ff'},
+  {line:'rgba(230,180,80,1)', bar:'rgba(230,180,80,0.4)',  hex:'#e6b450'},
+  {line:'rgba(63,185,80,1)',  bar:'rgba(63,185,80,0.4)',   hex:'#3fb950'},
+  {line:'rgba(248,81,73,1)',  bar:'rgba(248,81,73,0.4)',   hex:'#f85149'},
+  {line:'rgba(188,140,255,1)',bar:'rgba(188,140,255,0.4)', hex:'#bc8cff'},
+  {line:'rgba(255,150,80,1)', bar:'rgba(255,150,80,0.4)',  hex:'#ff9650'},
+  {line:'rgba(32,210,210,1)', bar:'rgba(32,210,210,0.4)',  hex:'#20d2d2'},
+  {line:'rgba(255,100,180,1)',bar:'rgba(255,100,180,0.4)', hex:'#ff64b4'},
+  {line:'rgba(140,200,80,1)', bar:'rgba(140,200,80,0.4)',  hex:'#8cc850'},
+  {line:'rgba(100,160,255,1)',bar:'rgba(100,160,255,0.4)', hex:'#64a0ff'},
+  {line:'rgba(255,180,50,1)', bar:'rgba(255,180,50,0.4)',  hex:'#ffb432'},
+  {line:'rgba(160,100,220,1)',bar:'rgba(160,100,220,0.4)', hex:'#a064dc'},
+];
+
+/* ── STATE ── */
+let seriesData=[], allPredictions=[], activeCharts=[];
+let currentChartPage=0;
+const CPP=4; // charts per page
+let displayMethods=[];
+let activePredIdx=0, activeAnalysisIdx=0, activeStatsIdx=0, activeChartIdx=0;
+let showComparison=false;
+let compChart=null, predVisible=true;
+
+/* ── ALERTS ── */
+function showAlert(msg,type='info',dur=6000){
+  const c=document.getElementById('alertContainer');
+  const id='al_'+Date.now();
+  const icons={error:'✕',success:'✓',info:'ℹ',warning:'⚠'};
+  const el=document.createElement('div');
+  el.className=`alert alert-${type}`;el.id=id;
+  el.innerHTML=`<span>${icons[type]||'ℹ'}</span><span style="flex:1">${msg}</span><span class="alert-close" onclick="document.getElementById('${id}').remove()">✕</span>`;
+  c.appendChild(el);
+  if(dur)setTimeout(()=>{const a=document.getElementById(id);if(a)a.remove();},dur);
+}
+function clearAlerts(){document.getElementById('alertContainer').innerHTML='';}
+
+/* ── NAV ── */
+function scrollToPanel(id){const el=document.getElementById(id);if(el&&!el.classList.contains('hidden'))el.scrollIntoView({behavior:'smooth',block:'start'});}
+function setProgress(p){document.getElementById('progressFill').style.width=p+'%';}
+function showPanel(id){document.getElementById(id).classList.remove('hidden');}
+function hidePanel(id){document.getElementById(id).classList.add('hidden');}
+function markStep(n,done){const e=document.getElementById('nav-step'+n);if(!e)return;e.classList.toggle('done',done);if(done)e.classList.remove('active');}
+function activateStep(n){[1,2,3,4,5].forEach(i=>{const e=document.getElementById('nav-step'+i);if(e)e.classList.toggle('active',i===n);});}
+
+/* ── EXAMPLE ── */
+function pasteExample(){
+  pasteExample._mode = (pasteExample._mode === 'h') ? 'v' : 'h';
+  if(pasteExample._mode === 'h'){
+    document.getElementById('dataInput').value = [
+      '年度	112	113	114	115	116	117	118',
+      '收入	1580	1640	1720	1690	1810	1930	2010',
+      '支出	1200	1250	1310	1280	1350	1420	1500',
+      '淨額	380	390	410	410	460	510	510'
+    ].join('\n');
+    showAlert('已載入水平範例（第一欄年度，數值往右展開）— 再按一次切換垂直格式','info',5000);
+  } else {
+    document.getElementById('dataInput').value = [
+      '年度	收入	支出	淨額',
+      '112	1580	1200	380',
+      '113	1640	1250	390',
+      '114	1720	1310	410',
+      '115	1690	1280	410',
+      '116	1810	1350	460',
+      '117	1930	1420	510',
+      '118	2010	1500	510'
+    ].join('\n');
+    showAlert('已載入垂直範例（第一列標題，年度為列）— 再按一次切換水平格式','info',5000);
+  }
+}
+
+function clearAll(){
+  document.getElementById('dataInput').value='';
+  document.getElementById('yearInputRow').classList.add('hidden');
+  document.getElementById('parsePreview').classList.add('hidden');
+  seriesData=[];allPredictions=[];displayMethods=[];
+  activeCharts.forEach(c=>c&&c.destroy());activeCharts=[];
+  if(compChart){compChart.destroy();compChart=null;}
+  ['panel-analysis','panel-stats','panel-prediction','panel-charts'].forEach(hidePanel);
+  document.getElementById('predTableWrap').innerHTML='<div class="empty-state"><div class="ei">🔮</div><p>點擊「產生預測及圖表」以計算所有方法結果</p></div>';
+  document.getElementById('chartsWrapper').innerHTML='<div class="empty-state"><div class="ei">📈</div><p>請先產生預測，再選擇顯示方法</p></div>';
+  document.getElementById('chartPagination').innerHTML='';
+  setProgress(8);
+  [1,2,3,4,5].forEach(n=>{const e=document.getElementById('nav-step'+n);if(e){e.classList.remove('done','active');}});
+  document.getElementById('nav-step1').classList.add('active');
+  clearAlerts();resetLoadBtn();
+}
+
+/* ── YEAR VALIDATION ── */
+function validateYear(val){
+  const s=val.trim(),n=parseInt(s,10);
+  if(isNaN(n))return{valid:false,msg:'請輸入數字年份'};
+  const cur=new Date().getFullYear();
+  if(s.length<=3){if(n>=1&&n<(cur-1911+100))return{valid:true,year:n};return{valid:false,msg:'民國年超出合理範圍'};}
+  if(s.length===4){if(n>=1900&&n<cur+100)return{valid:true,year:n};return{valid:false,msg:'西元年超出合理範圍'};}
+  return{valid:false,msg:'請輸入1-3碼民國年或4碼西元年'};
+}
+
+/* ── PARSER ── */
+// Detect if data is horizontal (series as rows, years as columns)
+// Layout: first col = series name, first row (or header) = years
+function isHorizontalLayout(rows){
+  if(rows.length<2)return false;
+  const firstRow=rows[0];
+  // First cell empty/text, remaining cells all year-like numbers
+  const yearCandidates=firstRow.slice(1).map(f=>parseFloat(f));
+  if(!yearCandidates.length)return false;
+  const allYears=yearCandidates.every(v=>!isNaN(v)&&Number.isInteger(v)&&((v>=50&&v<=200)||(v>=1900&&v<=2200)));
+  if(!allYears)return false;
+  // Remaining rows: first cell is text (series name), rest are numeric values
+  const dataRowsOk=rows.slice(1).every(r=>{
+    const name=r[0];
+    const vals=r.slice(1).map(f=>parseFloat(f));
+    return vals.length>0&&vals.every(v=>!isNaN(v));
+  });
+  return dataRowsOk;
+}
+
+function parseHorizontal(rows){
+  const yearRow=rows[0];
+  const years=yearRow.slice(1).map(f=>parseInt(f));
+  const series=rows.slice(1).map(r=>({
+    name:r[0]||'數列',
+    data:years.map((y,i)=>({year:y,value:parseFloat(r[i+1])})).filter(d=>!isNaN(d.value))
+  })).filter(s=>s.data.length>0);
+  return{type:'paired',series};
+}
+
+function parseInput(raw){
+  const lines=raw.trim().split(/[\r\n]+/).map(l=>l.trim()).filter(l=>l);
+  if(!lines.length)return{type:'empty'};
+  const rows=lines.map(l=>l.split(/\t|,/).map(f=>f.trim()));
+
+  // ── CHECK HORIZONTAL LAYOUT FIRST ──
+  // Case A: header row is years (first cell blank/text, rest are year numbers)
+  if(isHorizontalLayout(rows)){
+    return parseHorizontal(rows);
+  }
+  // Case B: first row is a label row (e.g. blank,"112","113"...) and rest are series rows
+  // (same as above but first cell might be "年度" text)
+  if(rows.length>=2){
+    const firstCellText=isNaN(parseFloat(rows[0][0]));
+    const restAreYears=rows[0].slice(1).map(f=>parseFloat(f)).every(v=>!isNaN(v)&&((v>=50&&v<=200)||(v>=1900&&v<=2200)));
+    if(firstCellText&&restAreYears){
+      // treat as horizontal with named header
+      const parsed=parseHorizontal(rows);
+      if(parsed.series.length>0)return parsed;
+    }
+  }
+
+  // ── VERTICAL LAYOUT ──
+  // detect header: first row has non-numeric cell
+  let header=null,dataRows=rows;
+  const firstHasText=rows[0].some(f=>f!==''&&isNaN(parseFloat(f)));
+  if(firstHasText&&rows.length>1){header=rows[0];dataRows=rows.slice(1);}
+  if(!dataRows.length)return{type:'empty'};
+  const colCount=Math.max(...dataRows.map(r=>r.length));
+
+  // ── YEAR COL DETECTION ──
+  let yearCol=-1;
+  if(header){
+    const yearKeywords=/年度|年份|年|year|yr/i;
+    for(let c=0;c<header.length;c++){
+      if(yearKeywords.test(header[c])){yearCol=c;break;}
+    }
+  }
+  if(yearCol<0){
+    for(let c=0;c<colCount;c++){
+      const vs=dataRows.map(r=>r[c]?parseFloat(r[c]):NaN);
+      const allInts=vs.every(v=>!isNaN(v)&&Number.isInteger(v));
+      if(!allInts)continue;
+      const inRocRange=vs.every(v=>v>=50&&v<=200);
+      const inGregorianRange=vs.every(v=>v>=1900&&v<=2200);
+      if(inRocRange||inGregorianRange){
+        const diffs=vs.slice(1).map((v,i)=>v-vs[i]);
+        const allStep1=diffs.every(d=>d===1||d===-1||d===0);
+        const mostlySmallStep=diffs.length>0&&diffs.every(d=>Math.abs(d)<=5);
+        if(allStep1||mostlySmallStep){yearCol=c;break;}
+      }
+    }
+  }
+
+  // value cols: numeric, not year col
+  const valCols=[];
+  for(let c=0;c<colCount;c++){
+    if(c===yearCol)continue;
+    const vs=dataRows.map(r=>r[c]?parseFloat(r[c]):NaN);
+    if(vs.every(v=>!isNaN(v)))valCols.push(c);
+  }
+  if(yearCol>=0&&valCols.length>0){
+    const names=header?valCols.map(c=>header[c]||`數列${c+1}`):valCols.map((c,i)=>`數列${i+1}`);
+    const series=valCols.map((c,i)=>({
+      name:names[i],
+      data:dataRows.map(r=>({year:parseInt(r[yearCol]),value:parseFloat(r[c])})).sort((a,b)=>a.year-b.year)
+    }));
+    return{type:'paired',series};
+  }
+  // value only
+  const allNums=dataRows.flatMap(r=>r.map(f=>parseFloat(f))).filter(v=>!isNaN(v));
+  if(allNums.length>0)return{type:'value_only',values:allNums};
+  return{type:'empty'};
+}
+/* ── LOAD ── */
+function loadData(){
+  clearAlerts();
+  const raw=document.getElementById('dataInput').value;
+  if(!raw.trim()){showAlert('請先輸入或貼上數據','error');return;}
+  const r=parseInput(raw);
+  if(r.type==='empty'){showAlert('無法解析有效數據，請確認格式','error');return;}
+  if(r.type==='paired'){finalizeData(r.series);return;}
+  // value_only
+  document.getElementById('yearInputRow').classList.remove('hidden');
+  document.getElementById('startYearInput').focus();
+  const btn=document.getElementById('loadBtn');
+  btn.onclick=confirmYearLoad;btn.textContent='確認並讀取';
+}
+function confirmYearLoad(){
+  clearAlerts();
+  const raw=document.getElementById('dataInput').value;
+  const yv=document.getElementById('startYearInput').value;
+  const vr=validateYear(yv);
+  if(!vr.valid){showAlert(vr.msg,'error');return;}
+  const r=parseInput(raw);
+  if(r.type!=='value_only'){showAlert('數據格式改變，請重新讀取','warning');resetLoadBtn();return;}
+  document.getElementById('yearInputRow').classList.add('hidden');
+  resetLoadBtn();
+  finalizeData([{name:'數值',data:r.values.map((v,i)=>({year:vr.year+i,value:v}))}]);
+}
+function resetLoadBtn(){const btn=document.getElementById('loadBtn');btn.onclick=loadData;btn.textContent='讀取資料';}
+
+function finalizeData(series){
+  if(!series||!series.length||!series[0].data.length){showAlert('沒有有效數據','error');return;}
+  seriesData=series;allPredictions=[];displayMethods=[];
+  activeCharts.forEach(c=>c&&c.destroy());activeCharts=[];
+  if(compChart){compChart.destroy();compChart=null;}
+  activePredIdx=0;activeAnalysisIdx=0;activeStatsIdx=0;activeChartIdx=0;showComparison=seriesData.length>1;
+
+  showParsePreview(series);
+  setupBaseYearSelect();
+  buildAnalysisTabs();
+  updateAnalysisTable();
+  buildStatsTabs();
+  displayStats(calcStats(series[0].data.map(d=>d.value)));
+
+  showPanel('panel-analysis');showPanel('panel-stats');showPanel('panel-prediction');hidePanel('panel-charts');
+  document.getElementById('predTableWrap').innerHTML='<div class="empty-state"><div class="ei">🔮</div><p>點擊「產生預測及圖表」以計算所有方法結果</p></div>';
+  markStep(1,true);markStep(2,true);markStep(3,true);activateStep(4);setProgress(60);
+  const totalPts=series.reduce((s,sr)=>s+sr.data.length,0);
+  showAlert(`成功讀取 ${series.length} 組數列，共 ${totalPts} 筆資料`,'success',5000);
+  scrollToPanel('panel-analysis');
+}
+
+/* ── PARSE PREVIEW ── */
+function showParsePreview(series){
+  const chips=document.getElementById('seriesChips');chips.innerHTML='';
+  series.forEach((s,i)=>{
+    const c=SC[i%SC.length];
+    const chip=document.createElement('div');chip.className='series-chip';
+    chip.style.cssText=`border-color:${c.hex};color:${c.hex};background:${c.hex}18`;
+    const y0=s.data[0]?.year,y1=s.data[s.data.length-1]?.year;
+    chip.innerHTML=`<span class="dot" style="background:${c.hex}"></span><strong>${s.name}</strong><span style="font-size:.72rem;color:var(--text-muted);margin-left:4px">${y0}–${y1} (${s.data.length}年)</span>`;
+    chips.appendChild(chip);
+  });
+  document.getElementById('parsePreview').classList.remove('hidden');
+}
+
+/* ── BASE YEAR ── */
+function setupBaseYearSelect(){
+  const sel=document.getElementById('baseYearSelect');sel.innerHTML='';
+  const years=[...new Set(seriesData.flatMap(s=>s.data.map(d=>d.year)))].sort((a,b)=>a-b);
+  years.forEach(y=>{const o=document.createElement('option');o.value=y;o.text=y;sel.appendChild(o);});
+  if(years.length)sel.value=years[0];
+}
+
+/* ── SERIES TABS ── */
+function buildTabs(containerId, onSelect, showCompare){
+  const el=document.getElementById(containerId);el.innerHTML='';
+  if(seriesData.length<2)return;
+  if(showCompare){
+    const t=makeTab('🔀 比較','compare',null,()=>{setTabActive(el,t);onSelect(-1);});
+    el.appendChild(t);
+  }
+  seriesData.forEach((s,i)=>{
+    const c=SC[i%SC.length];
+    const t=makeTab(s.name,null,c.hex,()=>{setTabActive(el,t,c.hex);onSelect(i);});
+    el.appendChild(t);
+  });
+  // activate first non-compare or first
+  const first=el.children[0];if(first){first.click();}
+}
+function makeTab(label,specialClass,color,onClick){
+  const t=document.createElement('button');t.className='series-tab';
+  if(specialClass)t.classList.add('series-tab-'+specialClass);
+  t.textContent=label;t.onclick=onClick;
+  if(color)t.dataset.color=color;
+  return t;
+}
+function setTabActive(container,tab,color){
+  Array.from(container.children).forEach(t=>{t.classList.remove('active');t.style.background='';t.style.borderColor='';t.style.color='';});
+  tab.classList.add('active');
+  tab.style.color='#0d1117';
+  if(color){tab.style.background=color;tab.style.borderColor=color;}
+  else{tab.style.background='var(--text-secondary)';tab.style.borderColor='var(--text-secondary)';}
+}
+
+function buildAnalysisTabs(){
+  const el=document.getElementById('analysisTabs');el.innerHTML='';
+  if(seriesData.length<2)return;
+  seriesData.forEach((s,i)=>{
+    const c=SC[i%SC.length];
+    const t=makeTab(s.name,null,c.hex,()=>{setTabActive(el,t,c.hex);activeAnalysisIdx=i;updateAnalysisTable();});
+    t.title=`查看「${s.name}」的數值、增減比率與同比分析（${s.data[0]?.year}–${s.data[s.data.length-1]?.year}年）`;
+    el.appendChild(t);
+  });
+  const first=el.children[0];if(first)first.click();
+}
+function buildStatsTabs(){
+  const el=document.getElementById('statsTabs');el.innerHTML='';
+  if(seriesData.length<2)return;
+  seriesData.forEach((s,i)=>{
+    const c=SC[i%SC.length];
+    const t=makeTab(s.name,null,c.hex,()=>{setTabActive(el,t,c.hex);activeStatsIdx=i;displayStats(calcStats(seriesData[activeStatsIdx].data.map(d=>d.value)));});
+    t.title=`查看「${s.name}」的敘述性統計（平均值、標準差、全距等）`;
+    el.appendChild(t);
+  });
+  const first=el.children[0];if(first)first.click();
+}
+function buildPredTabs(){
+  const el=document.getElementById('predTabs');el.innerHTML='';
+  if(seriesData.length<2)return;
+  seriesData.forEach((s,i)=>{
+    const c=SC[i%SC.length];
+    const t=makeTab(s.name,null,c.hex,()=>{setTabActive(el,t,c.hex);activePredIdx=i;renderPredTable(allPredictions[activePredIdx]?.predictions||[]);});
+    t.title=`查看「${s.name}」的 18 種預測方法結果，點擊欄位標題可排序`;
+    el.appendChild(t);
+  });
+  const first=el.children[0];if(first)first.click();
+}
+function buildChartTabs(){
+  const el=document.getElementById('chartTabs');
+  el.innerHTML='';
+  const compSection=document.getElementById('comparisonSection');
+  const chartControls=document.querySelector('.chart-controls');
+  const chartsWrapper=document.getElementById('chartsWrapper');
+  const chartPagination=document.getElementById('chartPagination');
+  const exportBar=document.getElementById('exportBar');
+
+  function switchToCompare(){
+    activeChartSeriesIdx=-1;
+    compSection.classList.remove('hidden');
+    // Hide individual chart area when on compare tab
+    chartsWrapper.innerHTML='<div class="empty-state"><div class="ei">📊</div><p>目前顯示多數列比較圖<br>請選擇右方某一數列以查看個別預測圖</p></div>';
+    chartPagination.innerHTML='';
+    exportBar.classList.add('hidden');
+    chartControls.style.visibility='hidden';
+    renderCompChart();
+  }
+
+  function switchToSeries(i){
+    activeChartSeriesIdx=i;
+    compSection.classList.add('hidden');
+    chartControls.style.visibility='visible';
+    const sp=allPredictions[Math.min(i,allPredictions.length-1)];
+    const sel=document.getElementById('chartMethodSelect');
+    const prev=sel.value;
+    sel.innerHTML='<option value="none">請選擇方法</option><option value="all">全部方法（分頁）</option>';
+    sp.predictions.forEach(p=>{const o=document.createElement('option');o.value=p.method;o.text=p.method;sel.appendChild(o);});
+    sel.value=([...sel.options].some(o=>o.value===prev)&&prev!=='none')?prev:'all';
+    displayCharts();
+  }
+
+  if(seriesData.length>1){
+    // Compare tab
+    const compTab=makeTab('🔀 比較','compare',null,()=>{setTabActive(el,compTab,null);switchToCompare();});
+    compTab.title='顯示所有數列的歷史趨勢比較圖';
+    el.appendChild(compTab);
+    // Series tabs
+    seriesData.forEach((s,i)=>{
+      const c=SC[i%SC.length];
+      const t=makeTab(s.name,null,c.hex,()=>{setTabActive(el,t,c.hex);switchToSeries(i);});
+      t.title=`查看「${s.name}」的預測圖表（${s.data.length} 年資料）`;
+      el.appendChild(t);
+    });
+    // Default: compare tab active
+    setTabActive(el,el.children[0],null);
+    switchToCompare();
+  } else if(seriesData.length===1){
+    // Single series: no tabs needed, just show charts directly
+    chartControls.style.visibility='visible';
+    compSection.classList.add('hidden');
+    activeChartSeriesIdx=0;
+    const sp=allPredictions[0];
+    const sel=document.getElementById('chartMethodSelect');
+    sel.innerHTML='<option value="none">請選擇方法</option><option value="all">全部方法（分頁）</option>';
+    sp.predictions.forEach(p=>{const o=document.createElement('option');o.value=p.method;o.text=p.method;sel.appendChild(o);});
+    sel.value='all';
+    displayCharts();
+  }
+}
+
+/* ── ANALYSIS TABLE ── */
+function updateAnalysisTable(){
+  const tb=document.getElementById('integratedTableBody');if(!tb||!seriesData.length)return;
+  tb.innerHTML='';
+  const s=seriesData[Math.min(activeAnalysisIdx,seriesData.length-1)];
+  const by=parseInt(document.getElementById('baseYearSelect').value)||s.data[0].year;
+  const bv=(s.data.find(d=>d.year===by)||s.data[0]).value;
+  const rows=[
+    {label:'年度',vals:s.data.map(d=>d.year),sortIdx:0},
+    {label:'數值',vals:s.data.map(d=>d.value.toFixed(2)),sortIdx:1},
+    {label:'增減比率',vals:s.data.map((d,i)=>{if(!i)return'—';const p=s.data[i-1].value;if(!p)return d.value?'∞%':'0%';const pct=((d.value-p)/p*100).toFixed(2);return(pct>0?'+':'')+pct+'%';})},
+    {label:`同比 (基準:${by})`,vals:s.data.map(d=>{if(!bv)return d.value?'∞%':'0%';return((d.value/bv)*100).toFixed(2)+'%';})}
+  ];
+  rows.forEach((row,ri)=>{
+    const tr=document.createElement('tr');
+    const th=document.createElement('th');th.textContent=row.label;
+    if(row.sortIdx!==undefined){th.className='sortable';th.onclick=()=>sortAnalysis(row.sortIdx);}
+    tr.appendChild(th);
+    row.vals.forEach((val,ci)=>{
+      const td=document.createElement('td');td.textContent=val;
+      if(row.label==='增減比率'&&val!=='—'){if(String(val).startsWith('+'))td.style.color='var(--accent3)';else if(String(val).startsWith('-'))td.style.color='var(--danger)';}
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+}
+function sortAnalysis(colIdx){
+  const s=seriesData[activeAnalysisIdx];if(!s)return;
+  const tbl=document.getElementById('integratedTableBody').closest('table');
+  const ord=tbl.dataset.sortOrder==='asc'?'desc':'asc';tbl.dataset.sortOrder=ord;
+  if(colIdx===0)s.data.sort((a,b)=>ord==='asc'?a.year-b.year:b.year-a.year);
+  else s.data.sort((a,b)=>ord==='asc'?a.value-b.value:b.value-a.value);
+  updateAnalysisTable();
+}
+
+/* ── STATS ── */
+function calcStats(vals){
+  if(!vals||!vals.length)return{};
+  const n=vals.length,mean=vals.reduce((s,v)=>s+v,0)/n;
+  const variance=n>1?vals.reduce((s,v)=>s+Math.pow(v-mean,2),0)/(n-1):0;
+  const std=Math.sqrt(variance),min=Math.min(...vals),max=Math.max(...vals);
+  return{n,mean,std,min,max,range:max-min,cv:mean?std/mean*100:NaN};
+}
+function displayStats(stats){
+  const grid=document.getElementById('statsGrid');grid.innerHTML='';
+  [{label:'資料筆數',val:stats.n,isInt:true,unit:'筆'},{label:'平均值',val:stats.mean},{label:'標準差（樣本）',val:stats.std},{label:'最小值',val:stats.min},{label:'最大值',val:stats.max},{label:'全距',val:stats.range},{label:'變異係數',val:stats.cv,unit:'%'}]
+  .forEach(item=>{
+    const card=document.createElement('div');card.className='stat-card';
+    const v=(typeof item.val==='number'&&!isNaN(item.val))?(item.isInt?item.val:item.val.toFixed(2))+(item.unit||''):'N/A';
+    card.innerHTML=`<div class="stat-label">${item.label}</div><div class="stat-value">${v}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+/* ── MATH ── */
+const avg=arr=>{const n=arr.filter(v=>!isNaN(v));return n.length?n.reduce((s,v)=>s+v,0)/n.length:NaN;};
+const geo=vals=>{if(!vals.length)return NaN;if(vals.some(v=>v===0))return 0;return Math.pow(vals.reduce((p,v)=>p*(v<0?1:v),1),1/vals.length);};
+const ols=v=>{const n=v.length;if(n<2)return NaN;let sx=0,sy=0,sxy=0,sxx=0;for(let i=0;i<n;i++){sx+=i+1;sy+=v[i];sxy+=(i+1)*v[i];sxx+=(i+1)**2;}const d=n*sxx-sx*sx;if(!d)return NaN;const b=(n*sxy-sx*sy)/d,a=(sy-b*sx)/n;return a+b*(n+1);};
+const holt=(v,a=.5,b=.3)=>{const n=v.length;if(n<2)return NaN;let L=v[0],T=v[1]-v[0];for(let i=1;i<n;i++){const ll=L;L=a*v[i]+(1-a)*(L+T);T=b*(L-ll)+(1-b)*T;}return L+T;};
+const exp_s=(v,a)=>{if(!v.length)return NaN;let s=v[0];for(let i=1;i<v.length;i++)s=a*v[i]+(1-a)*s;return s;};
+const arima=v=>{const n=v.length;if(n<2)return NaN;const d=v.slice(1).map((x,i)=>x-v[i]);return v[n-1]+avg(d);};
+const augStd=(h,pred)=>{if(isNaN(pred)||!h.length)return NaN;const a=[...h,pred],n=a.length;if(n<=1)return 0;const m=a.reduce((s,v)=>s+v,0)/n;return Math.sqrt(a.reduce((s,v)=>s+Math.pow(v-m,2),0)/(n-1));};
+const MDEFS={
+  '平均 (近3年)':{def:'最近3年算術平均值',f:'mean(x[t-2],x[t-1],x[t])'},
+  '平均 (近4年)':{def:'最近4年算術平均值',f:'mean(x[t-3],...,x[t])'},
+  '平均 (近5年)':{def:'最近5年算術平均值',f:'mean(x[t-4],...,x[t])'},
+  '平均 (全期)':{def:'全期算術平均值',f:'mean(x[1],...,x[t])'},
+  '平均 (去極值)':{def:'移除最大最小後的平均值',f:'mean(排除 max/min)'},
+  '幾何平均 (近3年)':{def:'最近3年幾何平均值',f:'(x[t-2]·x[t-1]·x[t])^(1/3)'},
+  '幾何平均 (近4年)':{def:'最近4年幾何平均值',f:'(x[t-3]·...·x[t])^(1/4)'},
+  '幾何平均 (近5年)':{def:'最近5年幾何平均值',f:'(x[t-4]·...·x[t])^(1/5)'},
+  '幾何平均 (全期)':{def:'全期幾何平均值（負值視為1）',f:'(x[1]·...·x[t])^(1/t)'},
+  '幾何平均 (去極值)':{def:'移除極值後幾何平均值',f:'(去極值後)^(1/(t-2))'},
+  '最大值':{def:'歷史最大值',f:'max(x[1],...,x[t])'},
+  '最小值':{def:'歷史最小值',f:'min(x[1],...,x[t])'},
+  '指數平滑 (α=0.3)':{def:'簡單指數平滑 α=0.3',f:'S[t+1]=0.3·x[t]+0.7·S[t]'},
+  '指數平滑 (α=0.4)':{def:'簡單指數平滑 α=0.4',f:'S[t+1]=0.4·x[t]+0.6·S[t]'},
+  '指數平滑 (α=0.5)':{def:'簡單指數平滑 α=0.5',f:'S[t+1]=0.5·x[t]+0.5·S[t]'},
+  '線性趨勢 (OLS)':{def:'最小平方法線性趨勢外推',f:'Y[t+1]=a+b·(t+1)'},
+  'Holt 線性趨勢法':{def:'雙指數平滑（α=0.5,β=0.3）',f:'F[t+1]=L[t]+B[t]'},
+  '簡化 ARIMA':{def:'一階差分平均推估下期變動',f:'Y[t+1]=Y[t]+mean(ΔY)'},
+};
+function calcPreds(vals){
+  const V=vals,L=V.length,sorted=[...V].sort((a,b)=>a-b);
+  const noExt=L>2?sorted.slice(1,-1):V;
+  const ms=[
+    {m:'平均 (近3年)',fn:()=>avg(V.slice(-3))},{m:'平均 (近4年)',fn:()=>avg(V.slice(-4))},{m:'平均 (近5年)',fn:()=>avg(V.slice(-5))},
+    {m:'平均 (全期)',fn:()=>avg(V)},{m:'平均 (去極值)',fn:()=>avg(noExt)},
+    {m:'幾何平均 (近3年)',fn:()=>geo(V.slice(-3))},{m:'幾何平均 (近4年)',fn:()=>geo(V.slice(-4))},{m:'幾何平均 (近5年)',fn:()=>geo(V.slice(-5))},
+    {m:'幾何平均 (全期)',fn:()=>geo(V)},{m:'幾何平均 (去極值)',fn:()=>geo(noExt)},
+    {m:'最大值',fn:()=>L?Math.max(...V):NaN},{m:'最小值',fn:()=>L?Math.min(...V):NaN},
+    {m:'指數平滑 (α=0.3)',fn:()=>exp_s(V,.3)},{m:'指數平滑 (α=0.4)',fn:()=>exp_s(V,.4)},{m:'指數平滑 (α=0.5)',fn:()=>exp_s(V,.5)},
+    {m:'線性趨勢 (OLS)',fn:()=>ols(V)},{m:'Holt 線性趨勢法',fn:()=>holt(V)},{m:'簡化 ARIMA',fn:()=>arima(V)},
+  ];
+  return ms.map(({m,fn})=>{const val=fn();return{method:m,value:val,stdDevAugmented:augStd(V,val)};});
+}
+
+/* ── GENERATE ── */
+function generatePredictions(){
+  if(!seriesData.length){showAlert('請先讀取數據','error');return;}
+  const btn=document.getElementById('generateBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 計算中...';
+  setTimeout(()=>{
+    allPredictions=seriesData.map(s=>{
+      const preds=calcPreds(s.data.map(d=>d.value));
+      preds.sort((a,b)=>{if(isNaN(a.value)&&isNaN(b.value))return 0;if(isNaN(a.value))return 1;if(isNaN(b.value))return-1;return b.value-a.value;});
+      return{seriesName:s.name,predictions:preds};
+    });
+    buildPredTabs();
+    renderPredTable(allPredictions[0].predictions);
+    predVisible=true;document.getElementById('togglePredBtn').textContent='收合表格';
+
+    const sel=document.getElementById('chartMethodSelect');
+    sel.innerHTML='<option value="none">請選擇方法</option><option value="all">全部方法（分頁）</option>';
+    allPredictions[0].predictions.forEach(p=>{const o=document.createElement('option');o.value=p.method;o.text=p.method;sel.appendChild(o);});
+    sel.value='all';
+
+    buildChartTabs();
+    showPanel('panel-charts');
+    // auto: comparison if multiple series, else series 0
+    if(seriesData.length>1){
+      showComparison=true;activeChartIdx=0;
+      document.getElementById('comparisonSection').classList.remove('hidden');
+      renderCompChart();
+    } else {
+      showComparison=false;activeChartIdx=0;
+      document.getElementById('comparisonSection').classList.add('hidden');
+    }
+    displayCharts();
+
+    btn.disabled=false;btn.textContent='重新產生';
+    markStep(4,true);markStep(5,true);activateStep(5);setProgress(100);
+    showAlert(`預測完成！${seriesData.length}組數列 × ${allPredictions[0].predictions.length}種方法`,'success',5000);
+    scrollToPanel('panel-prediction');
+  },0);
+}
+
+/* ── PRED TABLE ── */
+function togglePredTable(){
+  const w=document.getElementById('predTableWrap'),btn=document.getElementById('togglePredBtn');
+  predVisible=!predVisible;w.style.display=predVisible?'':'none';btn.textContent=predVisible?'收合表格':'展開表格';
+}
+function renderPredTable(preds){
+  const wrap=document.getElementById('predTableWrap');wrap.style.display='';predVisible=true;
+  if(!preds.length){wrap.innerHTML='<div class="empty-state"><div class="ei">🔮</div><p>無預測結果</p></div>';return;}
+  const nums=preds.map(p=>p.value).filter(v=>!isNaN(v));
+  const maxV=nums.length?Math.max(...nums):NaN,minV=nums.length?Math.min(...nums):NaN;
+  const tbl=document.createElement('table');
+  tbl.innerHTML=`<thead><tr><th class="sortable" onclick="sortPred(0)">方法</th><th class="sortable" onclick="sortPred(1)">預測值 ▾</th><th class="sortable" onclick="sortPred(2)"><div class="tooltip-wrap">擴增標準差<span class="tt-icon">?</span><span class="tt-content">將預測值加入歷史資料後重新計算的樣本標準差，越小代表預測值與歷史資料越吻合。</span></div></th><th>方法定義</th><th>公式</th></tr></thead>`;
+  const tb=document.createElement('tbody');
+  preds.forEach(p=>{
+    const isMax=!isNaN(p.value)&&p.value===maxV,isMin=!isNaN(p.value)&&p.value===minV;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.method}</td>
+    <td class="pred-value ${isMax?'pred-max':isMin?'pred-min':''}">${isNaN(p.value)?'N/A':p.value.toFixed(2)}${isMax?'<span class="pred-badge badge-max">最高</span>':''}${isMin?'<span class="pred-badge badge-min">最低</span>':''}</td>
+    <td class="pred-value">${isNaN(p.stdDevAugmented)?'N/A':p.stdDevAugmented.toFixed(2)}</td>
+    <td style="font-size:.8rem;color:var(--text-secondary);white-space:normal;min-width:140px">${(MDEFS[p.method]||{}).def||'—'}</td>
+    <td class="formula-cell">${(MDEFS[p.method]||{}).f||'—'}</td>`;
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  wrap.innerHTML='';const dv=document.createElement('div');dv.className='table-wrapper';dv.appendChild(tbl);wrap.appendChild(dv);
+}
+let ps={col:1,order:'desc'};
+function sortPred(col){
+  if(ps.col===col)ps.order=ps.order==='asc'?'desc':'asc';else{ps.col=col;ps.order='desc';}
+  const preds=allPredictions[activePredIdx]?.predictions;if(!preds)return;
+  preds.sort((a,b)=>{
+    let va,vb;
+    if(col===0){va=a.method;vb=b.method;}else if(col===1){va=a.value;vb=b.value;}else{va=a.stdDevAugmented;vb=b.stdDevAugmented;}
+    if(isNaN(va)&&isNaN(vb))return 0;if(isNaN(va))return 1;if(isNaN(vb))return-1;
+    if(typeof va==='string')return ps.order==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return ps.order==='asc'?va-vb:vb-va;
+  });
+  renderPredTable(preds);
+}
+
+/* ── COMPARISON CHART ── */
+function renderCompChart(){
+  const canvas=document.getElementById('comparisonChart');
+  if(compChart){compChart.destroy();compChart=null;}
+  if(!seriesData.length)return;
+  const allYears=[...new Set(seriesData.flatMap(s=>s.data.map(d=>d.year)))].sort((a,b)=>a-b);
+  const datasets=seriesData.map((s,i)=>{
+    const c=SC[i%SC.length];
+    return{type:'line',label:s.name,data:allYears.map(y=>{const pt=s.data.find(d=>d.year===y);return pt?pt.value:null;}),
+      borderColor:c.line,backgroundColor:c.bar,borderWidth:2,fill:false,tension:.3,pointRadius:4,pointHoverRadius:7};
+  });
+  compChart=new Chart(canvas,{data:{labels:allYears,datasets},options:chartOptions()});
+}
+
+/* ── INDIVIDUAL CHARTS ── */
+// Persistent chart context so renderChartPage can be called from pagination without args
+let _chartCtx={s:null,nextYear:null,color:null};
+
+function displayCharts(){
+  const wrap=document.getElementById('chartsWrapper');
+  const pag=document.getElementById('chartPagination');
+  activeCharts.forEach(c=>c&&c.destroy());activeCharts=[];
+  wrap.innerHTML='';pag.innerHTML='';
+  if(!allPredictions.length)return;
+
+  const sel=document.getElementById('chartMethodSelect').value;
+  document.getElementById('exportBar').classList.toggle('hidden',sel==='none');
+
+  // activeChartSeriesIdx=-1 means "comparison" tab is active; for individual charts use 0
+  const si=Math.max(0,activeChartSeriesIdx);
+  const sp=allPredictions[Math.min(si,allPredictions.length-1)];
+  const s=seriesData[Math.min(si,seriesData.length-1)];
+  const color=SC[si%SC.length];
+  const lastYear=Math.max(...s.data.map(d=>d.year));
+  const nextYear=lastYear+1;
+  const titleEl=document.getElementById('chartDisplayTitle');
+
+  if(sel==='none'){
+    wrap.innerHTML='<div class="empty-state"><div class="ei">📈</div><p>請從上方選擇要顯示的方法</p></div>';
+    titleEl.textContent='';return;
+  }
+  if(sel==='all'){
+    displayMethods=[...sp.predictions];
+    titleEl.textContent=`${s.name} — 全部 ${sp.predictions.length} 種方法`;
+  } else {
+    const found=sp.predictions.find(p=>p.method===sel);
+    displayMethods=found?[found]:[];
+    titleEl.textContent=found?`${s.name} — ${found.method}：${isNaN(found.value)?'N/A':found.value.toFixed(2)}`:'';
+  }
+
+  if(!displayMethods.length){
+    wrap.innerHTML='<div class="empty-state"><div class="ei">📈</div><p>找不到對應方法</p></div>';return;
+  }
+
+  // Store context for pagination buttons
+  _chartCtx={s,nextYear,color};
+  currentChartPage=0;
+  renderChartPage();
+}
+
+function renderChartPage(){
+  const {s,nextYear,color}=_chartCtx;
+  if(!s)return;
+  const wrap=document.getElementById('chartsWrapper');
+  const pag=document.getElementById('chartPagination');
+  activeCharts.forEach(c=>c&&c.destroy());activeCharts=[];wrap.innerHTML='';
+
+  const total=displayMethods.length;
+  const totalPgs=Math.ceil(total/CPP);
+  const start=currentChartPage*CPP;
+  const page=displayMethods.slice(start,start+CPP);
+
+  // Build DOM with stable canvas IDs
+  const frag=document.createDocumentFragment();
+  const canvasIds=[];
+  page.forEach((pred,idx)=>{
+    const div=document.createElement('div');div.className='chart-accordion open';
+    const pl=isNaN(pred.value)?'N/A':pred.value.toFixed(2);
+    const cid=`chart_pg${currentChartPage}_idx${idx}`;
+    canvasIds.push(cid);
+    const mdef=MDEFS[pred.method]||{};
+    const tipHtml=mdef.def?`<span class="chart-method-tip">
+      <span class="tip-icon">?</span>
+      <span class="tip-box"><strong>${pred.method}</strong><br>${mdef.def}<br><span style="color:var(--text-muted);font-size:.74rem">公式：${mdef.f||'—'}</span></span>
+    </span>`:'';
+    const seriesLabel=activeChartSeriesIdx>=0?`<span style="font-size:.74rem;color:var(--text-muted);font-weight:400"> — ${seriesData[activeChartSeriesIdx]?.name||''}</span>`:'';
+    div.innerHTML=`<div class="chart-accordion-header" onclick="this.parentElement.classList.toggle('open');this.lastElementChild.style.transform=this.parentElement.classList.contains('open')?'rotate(180deg)':''">
+      <div class="chart-accordion-title"><span>${pred.method}${seriesLabel}</span>${tipHtml}<span class="chart-pred-value">預測值：${pl}</span></div>
+      <span class="chart-toggle-icon" style="transition:transform .25s">▼</span>
+    </div>
+    <div class="chart-accordion-body"><div class="chart-canvas-wrap"><canvas id="${cid}"></canvas></div></div>`;
+    frag.appendChild(div);
+  });
+  wrap.appendChild(frag);
+
+  // Render charts after DOM is ready
+  setTimeout(()=>{
+    page.forEach((pred,idx)=>{
+      const canvas=document.getElementById(canvasIds[idx]);
+      if(!canvas)return;
+      const inst=renderSingleChart(canvas,s.data,pred.value,nextYear,pred.method,color);
+      if(inst)activeCharts.push(inst);
+    });
+  },60);
+
+  // Pagination
+  pag.innerHTML='';
+  if(totalPgs>1){
+    const prev=document.createElement('button');prev.className='page-btn';prev.textContent='← 上頁';prev.disabled=currentChartPage===0;
+    prev.onclick=()=>{currentChartPage--;renderChartPage();};pag.appendChild(prev);
+    for(let i=0;i<totalPgs;i++){
+      const pb=document.createElement('button');pb.className='page-btn'+(i===currentChartPage?' active':'');pb.textContent=i+1;
+      pb.onclick=(p=>()=>{currentChartPage=p;renderChartPage();})(i);pag.appendChild(pb);
+    }
+    const next=document.createElement('button');next.className='page-btn';next.textContent='下頁 →';next.disabled=currentChartPage===totalPgs-1;
+    next.onclick=()=>{currentChartPage++;renderChartPage();};pag.appendChild(next);
+    const info=document.createElement('span');info.className='page-info';info.textContent=`第${currentChartPage+1}/${totalPgs}頁，共${total}種方法`;pag.appendChild(info);
+  }
+}
+function renderSingleChart(canvas,hist,predVal,nextYear,methodName,color){
+  const labels=[...hist.map(d=>d.year)];const hv=[...hist.map(d=>d.value)];const hasP=!isNaN(predVal);
+  const allLabels=hasP?[...labels,nextYear]:[...labels];
+  const barData=hasP?[...hv,null]:[...hv];
+  const predBar=new Array(allLabels.length).fill(null);if(hasP)predBar[predBar.length-1]=predVal;
+  const lineData=[...hv];if(hasP)lineData.push(predVal);
+  return new Chart(canvas,{
+    data:{labels:allLabels,datasets:[
+      {type:'bar',label:'歷史數值',data:barData,backgroundColor:color.bar,borderColor:color.line,borderWidth:1,order:2},
+      {type:'bar',label:`預測值 (${methodName})`,data:predBar,backgroundColor:'rgba(230,180,80,0.5)',borderColor:'rgba(230,180,80,0.9)',borderWidth:2,order:2},
+      {type:'line',label:'趨勢線',data:lineData,borderColor:color.line,backgroundColor:color.bar.replace('.4','.08'),borderWidth:2,fill:true,tension:.3,
+        pointRadius:allLabels.map((_,i)=>i===allLabels.length-1&&hasP?7:4),
+        pointBackgroundColor:allLabels.map((_,i)=>i===allLabels.length-1&&hasP?'rgba(230,180,80,1)':color.line),order:1}
+    ]},
+    options:chartOptions()
+  });
+}
+function chartOptions(){
+  const isDark=document.body.classList.contains('dark');
+  const tickC=isDark?'#b0bcd4':'#4a5675';
+  const gridC=isDark?'rgba(66,75,102,0.7)':'rgba(180,192,216,0.5)';
+  const titleC=isDark?'#8090b0':'#7a86a0';
+  const tooltipBg=isDark?'#2a3148':'#ffffff';
+  const tooltipBorder=isDark?'#424b66':'#d0d7e8';
+  const tooltipTitle=isDark?'#f0f4ff':'#1a2236';
+  const tooltipBody=isDark?'#b0bcd4':'#4a5675';
+  return{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{labels:{color:tickC,font:{size:11}}},
+      tooltip:{backgroundColor:tooltipBg,borderColor:tooltipBorder,borderWidth:1,titleColor:tooltipTitle,bodyColor:tooltipBody,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw!==null?Number(ctx.raw).toFixed(2):'N/A'}`}}
+    },
+    scales:{
+      x:{ticks:{color:tickC,font:{size:11}},grid:{color:gridC},title:{display:true,text:'年份',color:titleC}},
+      y:{beginAtZero:false,ticks:{color:tickC,font:{size:11}},grid:{color:gridC},title:{display:true,text:'數值',color:titleC}}
+    }
+  };
+}
+
+/* ── EXPORT ── */
+function exportCSV(){
+  if(!allPredictions.length||!seriesData.length){showAlert('尚無數據可匯出','warning');return;}
+  let csv='\uFEFF';
+  allPredictions.forEach(sp=>{
+    csv+=`數列：${sp.seriesName}\n方法,預測值,擴增標準差\n`;
+    sp.predictions.forEach(p=>{csv+=`"${p.method}",${isNaN(p.value)?'N/A':p.value.toFixed(4)},${isNaN(p.stdDevAugmented)?'N/A':p.stdDevAugmented.toFixed(4)}\n`;});
+    csv+='\n';
+  });
+  csv+='歷史數據\n年度,'+seriesData.map(s=>s.name).join(',')+'\n';
+  const years=[...new Set(seriesData.flatMap(s=>s.data.map(d=>d.year)))].sort((a,b)=>a-b);
+  years.forEach(y=>{csv+=[y,...seriesData.map(s=>{const pt=s.data.find(d=>d.year===y);return pt?pt.value:'';})].join(',')+'\n';});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`財務預測_${new Date().getFullYear()}.csv`;a.click();URL.revokeObjectURL(url);
+  showAlert('CSV 已匯出（包含所有數列）','success',3000);
+}
+function exportPNG(){
+  const canvas=document.querySelector('#chartsWrapper canvas')||document.getElementById('comparisonChart');
+  if(!canvas){showAlert('請先顯示圖表再匯出','warning');return;}
+  const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='財務趨勢圖表.png';a.click();
+  showAlert('PNG 已匯出','success',3000);
+}
+
+function toggleTheme(){
+  const isDark=document.body.classList.toggle('dark');
+  const btn=document.getElementById('themeToggle');
+  btn.textContent=isDark?'☀️ 淺色模式':'🌙 深色模式';
+  // Re-render active charts with new color context
+  if(allPredictions.length){
+    if(compChart){renderCompChart();}
+    if(displayMethods.length){renderChartPage();}
+  }
+}
+document.addEventListener('DOMContentLoaded',()=>setProgress(8));
+</script>
+</body>
+</html>
